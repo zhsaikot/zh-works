@@ -614,13 +614,6 @@
             min-width: 150px;
         }
 
-        /* Amount Display */
-        .amount {
-            font-family: 'Lexend', sans-serif;
-            font-weight: 600;
-            color: var(--teal-primary);
-        }
-
         /* Profile Edit */
         .profile-edit-preview {
             text-align: center;
@@ -688,10 +681,6 @@
                 <div class="stat-card">
                     <div class="stat-value" id="inProgressTasks">0</div>
                     <div class="stat-label">In Progress</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value amount" id="totalEarnings">৳0</div>
-                    <div class="stat-label">Total Earnings (BDT)</div>
                 </div>
             </div>
 
@@ -793,7 +782,6 @@
                                 <th>Month</th>
                                 <th>Total Tasks</th>
                                 <th>Completed</th>
-                                <th>Earnings (BDT)</th>
                             </tr>
                         </thead>
                         <tbody id="historyTableBody">
@@ -842,10 +830,6 @@
                         <select class="form-select" id="taskAccount" required>
                             <!-- Accounts will be populated dynamically -->
                         </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Amount (BDT)</label>
-                        <input type="number" class="form-input" id="taskAmount" min="0" step="0.01">
                     </div>
                 </div>
                 <div class="form-group">
@@ -1095,12 +1079,10 @@
                 const status = appData.statuses.find(s => s.id === t.statusId);
                 return status && status.name.toLowerCase() === 'in progress';
             }).length;
-            const earnings = appData.tasks.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
 
             document.getElementById('totalTasks').textContent = total;
             document.getElementById('completedTasks').textContent = completed;
             document.getElementById('inProgressTasks').textContent = inProgress;
-            document.getElementById('totalEarnings').textContent = '৳' + earnings.toLocaleString('en-BD', { minimumFractionDigits: 2 });
         }
 
         // Render tasks
@@ -1154,7 +1136,6 @@
                             <div class="task-meta">
                                 <span>📁 ${category ? escapeHtml(category.name) : 'Uncategorized'}</span>
                                 <span>👤 ${account ? escapeHtml(account.name) : 'No Account'}</span>
-                                ${task.amount ? `<span class="amount">৳${parseFloat(task.amount).toLocaleString('en-BD')}</span>` : ''}
                                 ${task.dueDate ? `<span>📅 ${formatDate(task.dueDate)}</span>` : ''}
                             </div>
                         </div>
@@ -1267,7 +1248,7 @@
                 const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                 
                 if (!monthlyData[monthKey]) {
-                    monthlyData[monthKey] = { total: 0, completed: 0, earnings: 0 };
+                    monthlyData[monthKey] = { total: 0, completed: 0 };
                 }
                 
                 monthlyData[monthKey].total++;
@@ -1276,8 +1257,6 @@
                 if (status && status.name.toLowerCase() === 'completed') {
                     monthlyData[monthKey].completed++;
                 }
-                
-                monthlyData[monthKey].earnings += parseFloat(task.amount) || 0;
             });
 
             // Sort months (newest first)
@@ -1286,7 +1265,7 @@
             if (sortedMonths.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="4" style="text-align: center; padding: 40px;">No history available</td>
+                        <td colspan="3" style="text-align: center; padding: 40px;">No history available</td>
                     </tr>
                 `;
                 return;
@@ -1302,7 +1281,6 @@
                         <td>${monthName}</td>
                         <td>${data.total}</td>
                         <td>${data.completed}</td>
-                        <td class="amount">৳${data.earnings.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</td>
                     </tr>
                 `;
             }).join('');
@@ -1415,7 +1393,6 @@
                     document.getElementById('taskCategory').value = task.categoryId;
                     document.getElementById('taskStatus').value = task.statusId;
                     document.getElementById('taskAccount').value = task.accountId;
-                    document.getElementById('taskAmount').value = task.amount || '';
                     document.getElementById('taskDueDate').value = task.dueDate || '';
                     document.getElementById('taskModalTitle').textContent = 'Edit Task';
                 }
@@ -1439,7 +1416,6 @@
                 categoryId: document.getElementById('taskCategory').value,
                 statusId: document.getElementById('taskStatus').value,
                 accountId: document.getElementById('taskAccount').value,
-                amount: document.getElementById('taskAmount').value,
                 dueDate: document.getElementById('taskDueDate').value,
                 createdAt: taskId ? appData.tasks.find(t => t.id === taskId).createdAt : new Date().toISOString(),
                 updatedAt: new Date().toISOString()
