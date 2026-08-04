@@ -1239,6 +1239,7 @@
         // Render history
         function renderHistory() {
             const tbody = document.getElementById('historyTableBody');
+            if (!tbody) return;
             
             // Group tasks by month
             const monthlyData = {};
@@ -1289,6 +1290,8 @@
         // Setup month selector for chart
         function setupMonthSelector() {
             const select = document.getElementById('monthSelect');
+            if (!select) return;
+            
             const months = [];
             
             // Get last 12 months
@@ -1307,7 +1310,10 @@
         let chartInstance = null;
 
         function updateChart() {
-            const monthKey = document.getElementById('monthSelect').value;
+            const monthSelect = document.getElementById('monthSelect');
+            if (!monthSelect) return;
+            
+            const monthKey = monthSelect.value;
             const ctx = document.getElementById('monthlyChart').getContext('2d');
 
             // Get tasks for selected month
@@ -1671,6 +1677,28 @@
 
         // Initialize app on load
         window.addEventListener('DOMContentLoaded', initApp);
+
+        // Expose functions to global scope for onclick handlers
+        window.editCategory = editCategory;
+        window.deleteCategory = deleteCategory;
+        window.openCategoryModal = openCategoryModal;
+        window.saveCategory = saveCategory;
+        window.editAccount = editAccount;
+        window.deleteAccount = deleteAccount;
+        window.openAccountModal = openAccountModal;
+        window.saveAccount = saveAccount;
+        window.editStatus = editStatus;
+        window.deleteStatus = deleteStatus;
+        window.openStatusModal = openStatusModal;
+        window.saveStatus = saveStatus;
+        window.openTaskModal = openTaskModal;
+        window.editTask = editTask;
+        window.saveTask = saveTask;
+        window.deleteTask = deleteTask;
+        window.openProfileModal = openProfileModal;
+        window.saveProfile = saveProfile;
+        window.openModal = openModal;
+        window.closeModal = closeModal;
     </script>
 </body>
 </html>
