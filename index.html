@@ -559,6 +559,22 @@
                 width: 100%;
                 justify-content: center;
             }
+
+            /* Mobile filter bar - stack vertically */
+            .filter-bar {
+                grid-template-columns: 1fr;
+                position: relative;
+                top: 0;
+            }
+
+            .filter-group {
+                width: 100%;
+            }
+
+            .clear-btn {
+                width: 100%;
+                margin-top: 10px;
+            }
         }
 
         @media (max-width: 370px) {
@@ -612,6 +628,63 @@
 
         .filter-select {
             min-width: 150px;
+        }
+
+        /* Sticky Filter Bar */
+        .filter-bar {
+            position: sticky;
+            top: 0;
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            align-items: end;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .filter-group label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-family: 'Lexend', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-group .form-input,
+        .filter-group .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: 'Montserrat', sans-serif;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .filter-group .form-input:focus,
+        .filter-group .form-select:focus {
+            outline: none;
+            border-color: var(--teal-primary);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+        }
+
+        .clear-btn {
+            height: 42px;
+            align-self: end;
         }
 
         /* Profile Edit */
@@ -714,16 +787,39 @@
                     <button class="btn btn-primary" onclick="openTaskModal()">+ Add Task</button>
                 </div>
 
-                <div class="filter-section">
-                    <select class="form-select filter-select" id="filterCategory" onchange="renderTasks()">
-                        <option value="">All Categories</option>
-                    </select>
-                    <select class="form-select filter-select" id="filterStatus" onchange="renderTasks()">
-                        <option value="">All Statuses</option>
-                    </select>
-                    <select class="form-select filter-select" id="filterAccount" onchange="renderTasks()">
-                        <option value="">All Accounts</option>
-                    </select>
+                <!-- Sticky Filter Bar -->
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label>Search</label>
+                        <input type="text" class="form-input" id="searchInput" placeholder="Search tasks..." onkeyup="renderTasks()">
+                    </div>
+                    <div class="filter-group">
+                        <label>Category</label>
+                        <select class="form-select" id="filterCategory" onchange="renderTasks()">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Status</label>
+                        <select class="form-select" id="filterStatus" onchange="renderTasks()">
+                            <option value="">All Statuses</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Account</label>
+                        <select class="form-select" id="filterAccount" onchange="renderTasks()">
+                            <option value="">All Accounts</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>From Date</label>
+                        <input type="date" class="form-input" id="filterDateFrom" onchange="renderTasks()">
+                    </div>
+                    <div class="filter-group">
+                        <label>To Date</label>
+                        <input type="date" class="form-input" id="filterDateTo" onchange="renderTasks()">
+                    </div>
+                    <button class="btn btn-secondary clear-btn" onclick="clearFilters()">Clear</button>
                 </div>
 
                 <div class="task-list" id="taskList">
@@ -831,10 +927,25 @@
                             <!-- Accounts will be populated dynamically -->
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Due Date</label>
+                        <input type="date" class="form-input" id="taskDueDate">
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Start Time</label>
+                        <input type="datetime-local" class="form-input" id="taskStartTime">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">End Time</label>
+                        <input type="datetime-local" class="form-input" id="taskEndTime">
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Due Date</label>
-                    <input type="date" class="form-input" id="taskDueDate">
+                    <label class="form-label">Proof (for completed tasks)</label>
+                    <input type="file" class="form-input" id="taskProof" accept=".jpg,.jpeg,.pdf,.docx,.doc,.html">
+                    <small style="color: #64ffda; font-size: 0.8rem;">Accepted formats: JPG, PDF, DOCX, HTML</small>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Save Task</button>
             </form>
@@ -1090,15 +1201,43 @@
             const container = document.getElementById('taskList');
             const recentContainer = document.getElementById('recentTasks');
             
+            const searchInput = document.getElementById('searchInput')?.value.toLowerCase();
             const filterCategory = document.getElementById('filterCategory')?.value;
             const filterStatus = document.getElementById('filterStatus')?.value;
             const filterAccount = document.getElementById('filterAccount')?.value;
+            const filterDateFrom = document.getElementById('filterDateFrom')?.value;
+            const filterDateTo = document.getElementById('filterDateTo')?.value;
 
             let filteredTasks = [...appData.tasks];
 
+            // Search filter
+            if (searchInput) {
+                filteredTasks = filteredTasks.filter(t => 
+                    t.title.toLowerCase().includes(searchInput) || 
+                    (t.description && t.description.toLowerCase().includes(searchInput))
+                );
+            }
+            
+            // Category filter
             if (filterCategory) filteredTasks = filteredTasks.filter(t => t.categoryId === filterCategory);
+            
+            // Status filter
             if (filterStatus) filteredTasks = filteredTasks.filter(t => t.statusId === filterStatus);
+            
+            // Account filter
             if (filterAccount) filteredTasks = filteredTasks.filter(t => t.accountId === filterAccount);
+            
+            // Date range filter
+            if (filterDateFrom) {
+                const fromDate = new Date(filterDateFrom);
+                filteredTasks = filteredTasks.filter(t => new Date(t.createdAt) >= fromDate);
+            }
+            
+            if (filterDateTo) {
+                const toDate = new Date(filterDateTo);
+                toDate.setHours(23, 59, 59, 999); // End of day
+                filteredTasks = filteredTasks.filter(t => new Date(t.createdAt) <= toDate);
+            }
 
             // Sort by created date (newest first)
             filteredTasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -1120,6 +1259,17 @@
             recentContainer.innerHTML = recentTasks.map(task => createTaskHTML(task)).join('');
         }
 
+        // Clear all filters
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterCategory').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterAccount').value = '';
+            document.getElementById('filterDateFrom').value = '';
+            document.getElementById('filterDateTo').value = '';
+            renderTasks();
+        }
+
         // Create task HTML
         function createTaskHTML(task) {
             const category = appData.categories.find(c => c.id === task.categoryId);
@@ -1127,6 +1277,22 @@
             const account = appData.accounts.find(a => a.id === task.accountId);
             
             const statusClass = status ? 'status-' + status.name.toLowerCase().replace(/\s+/g, '-') : '';
+            
+            // Calculate duration if start and end times exist
+            let durationHtml = '';
+            if (task.startTime && task.endTime) {
+                const start = new Date(task.startTime);
+                const end = new Date(task.endTime);
+                const diffMs = end - start;
+                if (diffMs > 0) {
+                    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    durationHtml = `<span>⏱️ Duration: ${hours}h ${minutes}m</span>`;
+                }
+            } else if (task.startTime) {
+                const start = new Date(task.startTime);
+                durationHtml = `<span>⏱️ Started: ${start.toLocaleString()}</span>`;
+            }
 
             return `
                 <div class="task-item">
@@ -1136,7 +1302,9 @@
                             <div class="task-meta">
                                 <span>📁 ${category ? escapeHtml(category.name) : 'Uncategorized'}</span>
                                 <span>👤 ${account ? escapeHtml(account.name) : 'No Account'}</span>
-                                ${task.dueDate ? `<span>📅 ${formatDate(task.dueDate)}</span>` : ''}
+                                <span>📅 Created: ${formatDate(task.createdAt)}</span>
+                                ${task.dueDate ? `<span>📅 Due: ${formatDate(task.dueDate)}</span>` : ''}
+                                ${durationHtml}
                             </div>
                         </div>
                         <span class="status-badge ${statusClass}" style="background-color: ${status ? status.color + '33' : ''}; color: ${status ? status.color : ''}">
@@ -1144,6 +1312,7 @@
                         </span>
                     </div>
                     ${task.description ? `<p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 15px;">${escapeHtml(task.description)}</p>` : ''}
+                    ${task.proof ? `<div style="margin-bottom: 15px; padding: 10px; background: rgba(100, 255, 218, 0.1); border-radius: 8px;"><small style="color: #64ffda;">📎 Proof attached: <a href="${task.proof.data}" download="${task.proof.name}" style="color: #64ffda; text-decoration: underline;">${escapeHtml(task.proof.name)}</a></small></div>` : ''}
                     <div class="task-actions">
                         <button class="btn btn-sm btn-secondary" onclick="editTask('${task.id}')">Edit</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteTask('${task.id}')">Delete</button>
@@ -1400,6 +1569,8 @@
                     document.getElementById('taskStatus').value = task.statusId;
                     document.getElementById('taskAccount').value = task.accountId;
                     document.getElementById('taskDueDate').value = task.dueDate || '';
+                    document.getElementById('taskStartTime').value = task.startTime || '';
+                    document.getElementById('taskEndTime').value = task.endTime || '';
                     document.getElementById('taskModalTitle').textContent = 'Edit Task';
                 }
             }
@@ -1415,14 +1586,64 @@
             event.preventDefault();
             
             const taskId = document.getElementById('taskId').value;
+            const statusId = document.getElementById('taskStatus').value;
+            const proofInput = document.getElementById('taskProof');
+            
+            // Check if changing status to Completed and no proof exists
+            const completedStatusId = appData.statuses.find(s => s.name.toLowerCase() === 'completed')?.id;
+            const isChangingToCompleted = statusId === completedStatusId;
+            
+            let taskProof = null;
+            if (taskId) {
+                const existingTask = appData.tasks.find(t => t.id === taskId);
+                taskProof = existingTask ? existingTask.proof : null;
+                
+                // If changing to completed and no proof, ask for upload
+                if (isChangingToCompleted && !taskProof) {
+                    if (!proofInput.files || proofInput.files.length === 0) {
+                        alert('Please upload proof (JPG, PDF, DOCX, or HTML) when marking a task as Completed.');
+                        return;
+                    }
+                }
+            } else {
+                // New task being created as completed
+                if (isChangingToCompleted && (!proofInput.files || proofInput.files.length === 0)) {
+                    alert('Please upload proof (JPG, PDF, DOCX, or HTML) when marking a task as Completed.');
+                    return;
+                }
+            }
+            
+            // Process file if uploaded
+            if (proofInput.files && proofInput.files.length > 0) {
+                const file = proofInput.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const proofData = {
+                        name: file.name,
+                        type: file.type,
+                        data: e.target.result,
+                        uploadedAt: new Date().toISOString()
+                    };
+                    finalizeSaveTask(taskId, statusId, proofData);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                finalizeSaveTask(taskId, statusId, taskProof);
+            }
+        }
+        
+        function finalizeSaveTask(taskId, statusId, proofData) {
             const taskData = {
                 id: taskId || generateId(),
                 title: document.getElementById('taskTitle').value,
                 description: document.getElementById('taskDescription').value,
                 categoryId: document.getElementById('taskCategory').value,
-                statusId: document.getElementById('taskStatus').value,
+                statusId: statusId,
                 accountId: document.getElementById('taskAccount').value,
                 dueDate: document.getElementById('taskDueDate').value,
+                startTime: document.getElementById('taskStartTime').value,
+                endTime: document.getElementById('taskEndTime').value,
+                proof: proofData,
                 createdAt: taskId ? appData.tasks.find(t => t.id === taskId).createdAt : new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
@@ -1694,11 +1915,13 @@
         window.openTaskModal = openTaskModal;
         window.editTask = editTask;
         window.saveTask = saveTask;
+        window.finalizeSaveTask = finalizeSaveTask;
         window.deleteTask = deleteTask;
         window.openProfileModal = openProfileModal;
         window.saveProfile = saveProfile;
         window.openModal = openModal;
         window.closeModal = closeModal;
+        window.clearFilters = clearFilters;
     </script>
 </body>
 </html>
