@@ -938,14 +938,26 @@
                 </div>
                 <div class="grid-2">
                     <div class="form-group">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" class="form-input" id="taskStartDate" onchange="updateTaskStartTime()">
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Start Time</label>
-                        <input type="datetime-local" class="form-input" id="taskStartTime">
+                        <input type="time" class="form-input" id="taskStartTimePicker" onchange="updateTaskStartTime()">
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">End Date</label>
+                        <input type="date" class="form-input" id="taskEndDate" onchange="updateTaskEndTime()">
                     </div>
                     <div class="form-group">
                         <label class="form-label">End Time</label>
-                        <input type="datetime-local" class="form-input" id="taskEndTime">
+                        <input type="time" class="form-input" id="taskEndTimePicker" onchange="updateTaskEndTime()">
                     </div>
                 </div>
+                <input type="hidden" id="taskStartTime">
+                <input type="hidden" id="taskEndTime">
                 <div class="form-group">
                     <label class="form-label">Proof (for completed tasks)</label>
                     <input type="file" class="form-input" id="taskProof" accept=".jpg,.jpeg,.pdf,.docx,.doc,.html">
@@ -1604,8 +1616,25 @@
                     document.getElementById('taskStatus').value = task.statusId;
                     document.getElementById('taskAccount').value = task.accountId;
                     document.getElementById('taskDueDate').value = task.dueDate || '';
-                    document.getElementById('taskStartTime').value = task.startTime || '';
-                    document.getElementById('taskEndTime').value = task.endTime || '';
+                    
+                    // Parse and set start date/time
+                    if (task.startTime) {
+                        const startDateTime = new Date(task.startTime);
+                        if (!isNaN(startDateTime.getTime())) {
+                            document.getElementById('taskStartDate').value = startDateTime.toISOString().split('T')[0];
+                            document.getElementById('taskStartTimePicker').value = startDateTime.toTimeString().slice(0, 5);
+                        }
+                    }
+                    
+                    // Parse and set end date/time
+                    if (task.endTime) {
+                        const endDateTime = new Date(task.endTime);
+                        if (!isNaN(endDateTime.getTime())) {
+                            document.getElementById('taskEndDate').value = endDateTime.toISOString().split('T')[0];
+                            document.getElementById('taskEndTimePicker').value = endDateTime.toTimeString().slice(0, 5);
+                        }
+                    }
+                    
                     document.getElementById('taskModalTitle').textContent = 'Edit Task';
                 }
             }
@@ -1693,6 +1722,39 @@
             saveData();
             closeModal('taskModal');
             renderAll();
+        }
+
+        // Combine date and time pickers into datetime values
+        function updateTaskStartTime() {
+            const startDate = document.getElementById('taskStartDate').value;
+            const startTime = document.getElementById('taskStartTimePicker').value;
+            
+            if (startDate && startTime) {
+                const combinedDateTime = new Date(`${startDate}T${startTime}`);
+                document.getElementById('taskStartTime').value = combinedDateTime.toISOString();
+            } else if (startDate) {
+                // If only date is set, use midnight
+                const combinedDateTime = new Date(`${startDate}T00:00`);
+                document.getElementById('taskStartTime').value = combinedDateTime.toISOString();
+            } else {
+                document.getElementById('taskStartTime').value = '';
+            }
+        }
+
+        function updateTaskEndTime() {
+            const endDate = document.getElementById('taskEndDate').value;
+            const endTime = document.getElementById('taskEndTimePicker').value;
+            
+            if (endDate && endTime) {
+                const combinedDateTime = new Date(`${endDate}T${endTime}`);
+                document.getElementById('taskEndTime').value = combinedDateTime.toISOString();
+            } else if (endDate) {
+                // If only date is set, use midnight
+                const combinedDateTime = new Date(`${endDate}T00:00`);
+                document.getElementById('taskEndTime').value = combinedDateTime.toISOString();
+            } else {
+                document.getElementById('taskEndTime').value = '';
+            }
         }
 
         function deleteTask(taskId) {
@@ -2113,6 +2175,8 @@
         window.editTask = editTask;
         window.saveTask = saveTask;
         window.finalizeSaveTask = finalizeSaveTask;
+        window.updateTaskStartTime = updateTaskStartTime;
+        window.updateTaskEndTime = updateTaskEndTime;
         window.deleteTask = deleteTask;
         window.openProfileModal = openProfileModal;
         window.saveProfile = saveProfile;
