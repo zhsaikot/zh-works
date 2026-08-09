@@ -784,7 +784,11 @@
             <div class="card">
                 <div class="card-title">
                     <span>All Tasks</span>
-                    <button class="btn btn-primary" onclick="openTaskModal()">+ Add Task</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" onclick="exportToCSV()">📥 Export CSV</button>
+                        <button class="btn btn-secondary" onclick="openImportModal()">📤 Import CSV</button>
+                        <button class="btn btn-primary" onclick="openTaskModal()">+ Add Task</button>
+                    </div>
                 </div>
 
                 <!-- Sticky Filter Bar -->
@@ -1047,6 +1051,37 @@
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Save Profile</button>
             </form>
+        </div>
+    </div>
+
+    <!-- Import CSV Modal -->
+    <div class="modal" id="importModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Import Tasks from CSV</h3>
+                <button class="modal-close" onclick="closeModal('importModal')">&times;</button>
+            </div>
+            <div style="padding: 20px;">
+                <p style="margin-bottom: 15px; color: var(--text-secondary);">Upload a CSV file with the following columns: title, description, categoryId, accountId, statusId, deadline</p>
+                <div class="form-group">
+                    <label class="form-label">Select CSV File</label>
+                    <input type="file" id="csvFileInput" accept=".csv" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Import Options</label>
+                    <select class="form-select" id="importOption">
+                        <option value="append">Append to existing tasks</option>
+                        <option value="replace">Replace all existing tasks</option>
+                    </select>
+                </div>
+                <div id="importPreview" style="margin: 15px 0; padding: 15px; background: var(--bg-secondary); border-radius: 8px; display: none;">
+                    <strong>Preview:</strong> <span id="importCount">0</span> tasks found
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn btn-primary" onclick="processCSVImport()" style="flex: 1;">Import</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('importModal')" style="flex: 1;">Cancel</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1887,6 +1922,168 @@
             return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
         }
 
+        // Export to CSV
+        function exportToCSV() {
+            if (appData.tasks.length === 0) {
+                alert('No tasks to export!');
+                return;
+            }
+
+            // CSV header
+            let csvContent = 'title,description,categoryId,accountId,statusId,deadline,createdAt\n';
+
+            // Add task rows
+            appData.tasks.forEach(task => {
+                const row = [
+                    `"${(task.title || '').replace(/"/g, '""')}"`,
+                    `"${(task.description || '').replace(/"/g, '""')}"`,
+                    task.categoryId || '',
+                    task.accountId || '',
+                    task.statusId || '',
+                    task.deadline || '',
+                    task.createdAt || ''
+                ];
+                csvContent += row.join(',') + '\n';
+            });
+
+            // Create download link
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', `zh-works-tasks-${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Open Import Modal
+        function openImportModal() {
+            document.getElementById('csvFileInput').value = '';
+            document.getElementById('importOption').value = 'append';
+            document.getElementById('importPreview').style.display = 'none';
+            document.getElementById('importCount').textContent = '0';
+            openModal('importModal');
+        }
+
+        // Parse CSV file
+        function parseCSV(text) {
+            const lines = text.split('\n').filter(line => line.trim());
+            if (lines.length < 2) return [];
+
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            const tasks = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                // Handle quoted values with commas
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+
+                const task = {};
+                headers.forEach((header, index) => {
+                    task[header] = values[index] || '';
+                });
+
+                // Only add if title exists
+                if (task.title) {
+                    tasks.push({
+                        id: generateId(),
+                        title: task.title,
+                        description: task.description || '',
+                        categoryId: task.categoryId || '',
+                        accountId: task.accountId || '',
+                        statusId: task.statusId || '',
+                        deadline: task.deadline || '',
+                        createdAt: task.createdAt || new Date().toISOString()
+                    });
+                }
+            }
+
+            return tasks;
+        }
+
+        // Process CSV Import
+        function processCSVImport() {
+            const fileInput = document.getElementById('csvFileInput');
+            const importOption = document.getElementById('importOption').value;
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Please select a CSV file!');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                try {
+                    const importedTasks = parseCSV(e.target.result);
+                    
+                    if (importedTasks.length === 0) {
+                        alert('No valid tasks found in the CSV file!');
+                        return;
+                    }
+
+                    if (importOption === 'replace') {
+                        appData.tasks = importedTasks;
+                    } else {
+                        appData.tasks = [...appData.tasks, ...importedTasks];
+                    }
+
+                    saveData();
+                    renderAll();
+                    closeModal('importModal');
+                    alert(`Successfully imported ${importedTasks.length} task(s)!`);
+                } catch (error) {
+                    alert('Error parsing CSV file: ' + error.message);
+                }
+            };
+
+            reader.onerror = function() {
+                alert('Error reading file!');
+            };
+
+            reader.readAsText(file);
+        }
+
+        // CSV file preview on selection
+        document.getElementById('csvFileInput')?.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const tasks = parseCSV(e.target.result);
+                        document.getElementById('importCount').textContent = tasks.length;
+                        document.getElementById('importPreview').style.display = 'block';
+                    } catch (error) {
+                        document.getElementById('importPreview').style.display = 'none';
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
         // Close modal when clicking outside
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', function(e) {
@@ -1923,6 +2120,9 @@
         window.closeModal = closeModal;
         window.clearFilters = clearFilters;
         window.updateChart = updateChart;
+        window.exportToCSV = exportToCSV;
+        window.openImportModal = openImportModal;
+        window.processCSVImport = processCSVImport;
     </script>
 </body>
 </html>
