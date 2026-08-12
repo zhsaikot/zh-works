@@ -224,6 +224,18 @@
             border-color: var(--teal-primary);
         }
 
+        /* Style for date/time picker icons */
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(63%) sepia(51%) saturate(409%) hue-rotate(147deg) brightness(92%) contrast(88%);
+            cursor: pointer;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator:hover,
+        input[type="time"]::-webkit-calendar-picker-indicator:hover {
+            filter: invert(58%) sepia(56%) saturate(420%) hue-rotate(147deg) brightness(90%) contrast(90%);
+        }
+
         .form-textarea {
             resize: vertical;
             min-height: 80px;
