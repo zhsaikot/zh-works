@@ -988,9 +988,9 @@
                 <input type="hidden" id="taskStartTime">
                 <input type="hidden" id="taskEndTime">
                 <div class="form-group">
-                    <label class="form-label">Proof (for completed tasks)</label>
-                    <input type="file" class="form-input" id="taskProof" accept=".jpg,.jpeg,.pdf,.docx,.doc,.html">
-                    <small style="color: #64ffda; font-size: 0.8rem;">Accepted formats: JPG, PDF, DOCX, HTML</small>
+                    <label class="form-label">Proof URL (for completed tasks)</label>
+                    <input type="url" class="form-input" id="taskProof" placeholder="https://example.com/proof">
+                    <small style="color: #64ffda; font-size: 0.8rem;">Paste a URL as proof when marking task as Completed</small>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Save Task</button>
             </form>
@@ -1388,7 +1388,7 @@
                         </span>
                     </div>
                     ${task.description ? `<p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 15px;">${escapeHtml(task.description)}</p>` : ''}
-                    ${task.proof ? `<div style="margin-bottom: 15px; padding: 10px; background: rgba(100, 255, 218, 0.1); border-radius: 8px;"><small style="color: #64ffda;">📎 Proof attached: <a href="${task.proof.data}" download="${task.proof.name}" style="color: #64ffda; text-decoration: underline;">${escapeHtml(task.proof.name)}</a></small></div>` : ''}
+                    ${task.proof ? `<div style="margin-bottom: 15px; padding: 10px; background: rgba(100, 255, 218, 0.1); border-radius: 8px;"><small style="color: #64ffda;">📎 Proof attached: <a href="${task.proof.data}" target="_blank" rel="noopener noreferrer" style="color: #64ffda; text-decoration: underline;">${task.proof.type === 'url' ? task.proof.data : escapeHtml(task.proof.name)}</a></small></div>` : ''}
                     <div class="task-actions">
                         <button class="btn btn-sm btn-secondary" onclick="editTask('${task.id}')">Edit</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteTask('${task.id}')">Delete</button>
@@ -1744,6 +1744,11 @@
                         }
                     }
                     
+                    // Set proof URL if exists
+                    if (task.proof && task.proof.type === 'url') {
+                        document.getElementById('taskProof').value = task.proof.data || '';
+                    }
+                    
                     document.getElementById('taskModalTitle').textContent = 'Edit Task';
                 }
             }
@@ -1760,7 +1765,7 @@
             
             const taskId = document.getElementById('taskId').value;
             const statusId = document.getElementById('taskStatus').value;
-            const proofInput = document.getElementById('taskProof');
+            const proofUrl = document.getElementById('taskProof').value.trim();
             
             // Check if changing status to Completed and no proof exists
             const completedStatusId = appData.statuses.find(s => s.name.toLowerCase() === 'completed')?.id;
@@ -1771,35 +1776,30 @@
                 const existingTask = appData.tasks.find(t => t.id === taskId);
                 taskProof = existingTask ? existingTask.proof : null;
                 
-                // If changing to completed and no proof, ask for upload
+                // If changing to completed and no proof, ask for URL
                 if (isChangingToCompleted && !taskProof) {
-                    if (!proofInput.files || proofInput.files.length === 0) {
-                        alert('Please upload proof (JPG, PDF, DOCX, or HTML) when marking a task as Completed.');
+                    if (!proofUrl) {
+                        alert('Please paste a proof URL when marking a task as Completed.');
                         return;
                     }
                 }
             } else {
                 // New task being created as completed
-                if (isChangingToCompleted && (!proofInput.files || proofInput.files.length === 0)) {
-                    alert('Please upload proof (JPG, PDF, DOCX, or HTML) when marking a task as Completed.');
+                if (isChangingToCompleted && !proofUrl) {
+                    alert('Please paste a proof URL when marking a task as Completed.');
                     return;
                 }
             }
             
-            // Process file if uploaded
-            if (proofInput.files && proofInput.files.length > 0) {
-                const file = proofInput.files[0];
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const proofData = {
-                        name: file.name,
-                        type: file.type,
-                        data: e.target.result,
-                        uploadedAt: new Date().toISOString()
-                    };
-                    finalizeSaveTask(taskId, statusId, proofData);
+            // Process URL if provided
+            if (proofUrl) {
+                const proofData = {
+                    name: 'Proof URL',
+                    type: 'url',
+                    data: proofUrl,
+                    uploadedAt: new Date().toISOString()
                 };
-                reader.readAsDataURL(file);
+                finalizeSaveTask(taskId, statusId, proofData);
             } else {
                 finalizeSaveTask(taskId, statusId, taskProof);
             }
