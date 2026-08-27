@@ -647,6 +647,29 @@
             background: var(--teal-primary);
         }
 
+        /* Toast Animations */
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
         /* Filter Section */
         .filter-section {
             display: flex;
@@ -1092,8 +1115,45 @@
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Save Profile</button>
             </form>
+            
+            <!-- Import & Export Data Section -->
+            <div style="margin-top: 25px; padding-top: 25px; border-top: 1px solid var(--border-color);">
+                <h4 style="color: var(--teal-primary); margin-bottom: 15px; font-size: 16px;">Import & Export Data</h4>
+                
+                <div class="form-group">
+                    <label class="form-label">Select Account</label>
+                    <select class="form-select" id="importExportAccount">
+                        <option value="all">All Accounts</option>
+                        <!-- Account options will be populated dynamically -->
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="button" class="btn btn-primary" onclick="exportData()" style="flex: 1;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Export
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('jsonFileInput').click()" style="flex: 1;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        Import
+                    </button>
+                </div>
+                
+                <input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="importData(event)">
+            </div>
         </div>
     </div>
+    
+    <!-- Import & Export Toast Notification -->
+    <div id="toastContainer" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>
 
     <!-- Import CSV Modal -->
     <div class="modal" id="importModal">
@@ -2043,7 +2103,26 @@
             document.getElementById('profileName').value = appData.profile.name;
             document.getElementById('profileEmail').value = appData.profile.email || '';
             document.getElementById('profileEditImage').src = appData.profile.image || '';
+            
+            // Populate account dropdown for import/export
+            populateImportExportAccountDropdown();
+            
             openModal('profileModal');
+        }
+
+        // Populate Import/Export Account Dropdown
+        function populateImportExportAccountDropdown() {
+            const select = document.getElementById('importExportAccount');
+            // Keep the "All Accounts" option
+            select.innerHTML = '<option value="all">All Accounts</option>';
+            
+            // Add account options
+            appData.accounts.forEach(account => {
+                const option = document.createElement('option');
+                option.value = account.id;
+                option.textContent = account.name;
+                select.appendChild(option);
+            });
         }
 
         function previewProfileImage(event) {
@@ -2078,6 +2157,237 @@
             }
             
             closeModal('profileModal');
+        }
+
+        // Toast notification function
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let bgColor = type === 'success' ? 'var(--success)' : 
+                         type === 'error' ? 'var(--danger)' : 
+                         type === 'warning' ? 'var(--warning)' : 'var(--teal-primary)';
+            
+            toast.style.cssText = `
+                background-color: ${bgColor};
+                color: white;
+                padding: 12px 24px;
+                margin-bottom: 10px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                animation: slideIn 0.3s ease-out;
+                max-width: 350px;
+                font-size: 14px;
+            `;
+            
+            toast.textContent = message;
+            container.appendChild(toast);
+            
+            // Auto remove after 4 seconds
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => {
+                    container.removeChild(toast);
+                }, 300);
+            }, 4000);
+        }
+
+        // Export Data function
+        function exportData() {
+            const selectedAccount = document.getElementById('importExportAccount').value;
+            
+            let exportObj;
+            let filename;
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            
+            if (selectedAccount === 'all') {
+                // Export all data
+                exportObj = {
+                    profile: appData.profile,
+                    accounts: appData.accounts,
+                    categories: appData.categories,
+                    statuses: appData.statuses,
+                    tasks: appData.tasks,
+                    exportDate: new Date().toISOString(),
+                    version: '1.0'
+                };
+                filename = `zhworks_all_data_${timestamp}.json`;
+            } else {
+                // Export specific account data with related transactions (tasks)
+                const account = appData.accounts.find(a => a.id === selectedAccount);
+                if (!account) {
+                    showToast('Selected account not found!', 'error');
+                    return;
+                }
+                
+                const accountTasks = appData.tasks.filter(t => t.accountId === selectedAccount);
+                
+                exportObj = {
+                    profile: appData.profile,
+                    account: account,
+                    categories: appData.categories,
+                    statuses: appData.statuses,
+                    tasks: accountTasks,
+                    exportDate: new Date().toISOString(),
+                    version: '1.0',
+                    exportedAccountId: selectedAccount
+                };
+                filename = `zhworks_account_${account.name.replace(/\s+/g, '_').toLowerCase()}_${timestamp}.json`;
+            }
+            
+            // Create and download file
+            const dataStr = JSON.stringify(exportObj, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            showToast(`Data exported successfully!`, 'success');
+        }
+
+        // Import Data function
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    // Validate imported data
+                    if (!importedData.version) {
+                        throw new Error('Invalid data format. Please select a valid ZH Works export file.');
+                    }
+                    
+                    const selectedAccount = document.getElementById('importExportAccount').value;
+                    
+                    // Show confirmation dialog
+                    let confirmMessage = selectedAccount === 'all' 
+                        ? 'This will merge imported data with your existing data. Continue?'
+                        : `This will import transactions to the selected account. Continue?`;
+                    
+                    if (!confirm(confirmMessage)) {
+                        event.target.value = ''; // Reset file input
+                        return;
+                    }
+                    
+                    if (selectedAccount === 'all') {
+                        // Merge all data - avoid duplicates
+                        // Merge accounts (by ID)
+                        const existingAccountIds = new Set(appData.accounts.map(a => a.id));
+                        importedData.accounts?.forEach(acc => {
+                            if (!existingAccountIds.has(acc.id)) {
+                                appData.accounts.push(acc);
+                            }
+                        });
+                        
+                        // Merge categories (by ID)
+                        const existingCategoryIds = new Set(appData.categories.map(c => c.id));
+                        importedData.categories?.forEach(cat => {
+                            if (!existingCategoryIds.has(cat.id)) {
+                                appData.categories.push(cat);
+                            }
+                        });
+                        
+                        // Merge statuses (by ID)
+                        const existingStatusIds = new Set(appData.statuses.map(s => s.id));
+                        importedData.statuses?.forEach(status => {
+                            if (!existingStatusIds.has(status.id)) {
+                                appData.statuses.push(status);
+                            }
+                        });
+                        
+                        // Merge tasks (by ID)
+                        const existingTaskIds = new Set(appData.tasks.map(t => t.id));
+                        importedData.tasks?.forEach(task => {
+                            if (!existingTaskIds.has(task.id)) {
+                                appData.tasks.push(task);
+                            }
+                        });
+                        
+                        // Update profile if different
+                        if (importedData.profile) {
+                            if (!appData.profile.name || appData.profile.name === 'User') {
+                                appData.profile.name = importedData.profile.name;
+                            }
+                            if (importedData.profile.email && !appData.profile.email) {
+                                appData.profile.email = importedData.profile.email;
+                            }
+                        }
+                        
+                        showToast(`Data imported successfully!`, 'success');
+                    } else {
+                        // Import transactions only to selected account
+                        if (!importedData.tasks) {
+                            throw new Error('No tasks found in imported file.');
+                        }
+                        
+                        // Create missing categories automatically
+                        const existingCategoryNames = new Set(appData.categories.map(c => c.name.toLowerCase()));
+                        const categoryMap = {}; // Map old category IDs to new ones
+                        
+                        if (importedData.categories) {
+                            importedData.categories.forEach(cat => {
+                                if (!existingCategoryNames.has(cat.name.toLowerCase())) {
+                                    const newCat = {
+                                        ...cat,
+                                        id: generateId()
+                                    };
+                                    appData.categories.push(newCat);
+                                    categoryMap[cat.id] = newCat.id;
+                                } else {
+                                    // Find existing category with same name
+                                    const existingCat = appData.categories.find(c => c.name.toLowerCase() === cat.name.toLowerCase());
+                                    if (existingCat) {
+                                        categoryMap[cat.id] = existingCat.id;
+                                    }
+                                }
+                            });
+                        }
+                        
+                        // Import tasks with updated account and category IDs
+                        let importedCount = 0;
+                        const existingTaskIds = new Set(appData.tasks.map(t => t.id));
+                        
+                        importedData.tasks.forEach(task => {
+                            if (!existingTaskIds.has(task.id)) {
+                                const newTask = {
+                                    ...task,
+                                    id: generateId(),
+                                    accountId: selectedAccount,
+                                    categoryId: categoryMap[task.categoryId] || task.categoryId
+                                };
+                                appData.tasks.push(newTask);
+                                importedCount++;
+                            }
+                        });
+                        
+                        showToast(`Imported ${importedCount} transaction(s) successfully!`, 'success');
+                    }
+                    
+                    saveData();
+                    renderAll();
+                    updateHeader();
+                    
+                } catch (error) {
+                    console.error('Import error:', error);
+                    showToast('Error importing data: ' + error.message, 'error');
+                }
+            };
+            
+            reader.onerror = function() {
+                showToast('Error reading file!', 'error');
+            };
+            
+            reader.readAsText(file);
+            event.target.value = ''; // Reset file input
         }
 
         // Utility functions
@@ -2296,6 +2606,9 @@
         window.exportToCSV = exportToCSV;
         window.openImportModal = openImportModal;
         window.processCSVImport = processCSVImport;
+        window.exportData = exportData;
+        window.importData = importData;
+        window.showToast = showToast;
     </script>
 </body>
 </html>
